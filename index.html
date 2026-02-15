@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NEON DRIFT: FINAL PRO</title>
+    
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6713917529499757" crossorigin="anonymous"></script>
+
     <style>
         :root { --neon: #0ff; --bg: #050505; }
         body { margin: 0; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', sans-serif; touch-action: none; color: white; }
@@ -94,6 +97,17 @@ let nextGhostMilestone = 2000;
 
 const player = { x: canvas.width/2, y: canvas.height * 0.8, r: 16, tx: canvas.width/2, alpha: 1 };
 
+// --- ADMOB INTERSTITIAL LOGIC ---
+function showInterstitialAd() {
+    if (window.adsbygoogle) {
+        (adsbygoogle = window.adsbygoogle || []).push({
+            google_ad_client: "ca-pub-6713917529499757",
+            enable_page_level_ads: true,
+            interstitial: {google_ad_slot: "8602514630"}
+        });
+    }
+}
+
 // --- SOUNDS ---
 const bgm = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3');
 const sfxCollect = new Audio('https://assets.mixkit.co/active_storage/sfx/2019/collect-sci-fi-game-item-1224.wav');
@@ -176,7 +190,7 @@ function drawPlayerShape() {
 }
 
 function update() {
-    if(!active || paused) return;
+if(!active || paused) return;
     frame++;
     player.x += (player.tx - player.x) * 0.18;
 
@@ -201,7 +215,7 @@ function update() {
     }
     if(frame % 150 === 0) objs.push({t:'orb', x:Math.random()*canvas.width, y:-50, r:10, s:4.5, c:'#ffd700'});
     
-    // BLUE BOOSTER - RARE SPAWN (Every ~12 seconds at 60fps)
+    // BLUE BOOSTER - RARE SPAWN
     if(frame % 750 === 0) objs.push({t:'boost', x:Math.random()*canvas.width, y:-50, r:14, s:6, c:'#0af'});
 
     if(score > level * 1000) level++;
@@ -219,8 +233,14 @@ function draw() {
         o.y += o.s;
         if(o.t === 'obs') {
             g.fillStyle = ghostActive ? '#333' : '#f33'; g.fillRect(o.x - o.w/2, o.y, o.w, o.h);
+            
+            // --- COLLISION / GAME OVER ---
             if(Math.abs(player.x - o.x) < o.w/2 + 10 && Math.abs(player.y - o.y) < 20 && !ghostActive) {
                 active = false; bgm.pause(); sfxCrash.play(); 
+                
+                // Show Ad on Game Over
+                showInterstitialAd();
+
                 document.getElementById('m_title').innerText = "GAME OVER";
                 document.getElementById('p_btn').innerText = "RESTART";
                 overlay.style.display='flex';
@@ -233,7 +253,7 @@ function draw() {
                 if(o.t === 'orb') { score += 100; orbs += 5; sfxCollect.currentTime = 0; sfxCollect.play(); }
                 else { 
                     boosterActive = true; boosterTime = 180; flash = 15; 
-                    sfxBoost.currentTime = 0; sfxBoost.play(); // BLUE SOUND BACK
+                    sfxBoost.currentTime = 0; sfxBoost.play();
                     objs = objs.filter(obj => obj.t !== 'obs');
                     document.getElementById('timer-box').innerText = "HYPER DRIVE";
                     document.getElementById('timer-box').style.display = 'block';
