@@ -12,12 +12,10 @@
         body { margin: 0; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', sans-serif; touch-action: none; color: white; }
         canvas { display: block; filter: contrast(1.2) saturate(1.2); }
 
-        /* HUD */
         #hud { position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; padding: 20px; box-sizing: border-box; z-index: 10; pointer-events: none; }
         .stat-box { background: rgba(255, 255, 255, 0.05); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(0, 255, 255, 0.2); backdrop-filter: blur(5px); }
         .neon-text { color: var(--neon); text-shadow: 0 0 10px var(--neon); font-weight: bold; font-size: 20px; }
 
-        /* Ghost Button */
         #ghost-btn {
             position: absolute; bottom: 30px; right: 20px; width: 75px; height: 75px;
             background: rgba(0, 255, 255, 0.1); border: 3px solid var(--neon);
@@ -30,7 +28,6 @@
 
         #timer-box { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); font-size: 22px; color: #ff0; display: none; z-index: 20; font-weight: bold; }
         
-        /* Overlay & Buttons */
         #overlay {
             position: absolute; inset: 0; background: rgba(0,0,0,0.95);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -65,7 +62,7 @@
         <h1 id="m_title" style="color: var(--neon); text-shadow: 0 0 20px var(--neon); margin: 0; font-size: 2.5rem;">NEON DRIFT</h1>
         <p id="m_desc" style="color:#888; font-size: 14px; margin: 10px 0;">GHOST CHARGE AT 2000 SCORE</p>
         
-        <div class="store-grid">
+        <div class="store-grid" id="skin-grid">
             <div class="skin-card active" onclick="setSkin('#0ff', 0, this, 'solid')"> <div class="preview" style="background:#0ff;"></div> <span>FREE</span> </div>
             <div class="skin-card" onclick="setSkin('#f0f', 50, this, 'ring')"> <div class="preview" style="border:3px double #f0f;"></div> <span>50</span> </div>
             <div class="skin-card" onclick="setSkin('#0f0', 100, this, 'glow')"> <div class="preview" style="background:radial-gradient(#fff,#0f0);"></div> <span>100</span> </div>
@@ -89,7 +86,7 @@ canvas.height = window.innerHeight;
 let score = 0, orbs = parseInt(localStorage.getItem('saved_orbs')) || 0;
 let level = 1, active = false, paused = false, frame = 0, flash = 0;
 let skinColor = '#0ff', skinType = 'solid';
-let objs = [], floatTexts = [];
+let objs = [], req;
 
 let ghostCharges = 0, ghostActive = false, ghostTime = 0;
 let boosterActive = false, boosterTime = 0;
@@ -97,18 +94,6 @@ let nextGhostMilestone = 2000;
 
 const player = { x: canvas.width/2, y: canvas.height * 0.8, r: 16, tx: canvas.width/2, alpha: 1 };
 
-// --- ADMOB INTERSTITIAL LOGIC ---
-function showInterstitialAd() {
-    if (window.adsbygoogle) {
-        (adsbygoogle = window.adsbygoogle || []).push({
-            google_ad_client: "ca-pub-6713917529499757",
-            enable_page_level_ads: true,
-            interstitial: {google_ad_slot: "8602514630"}
-        });
-    }
-}
-
-// --- SOUNDS ---
 const bgm = new Audio('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3');
 const sfxCollect = new Audio('https://assets.mixkit.co/active_storage/sfx/2019/collect-sci-fi-game-item-1224.wav');
 const sfxGhost = new Audio('https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3');
@@ -125,17 +110,19 @@ function setSkin(color, cost, el, type) {
     }
 }
 
+// HARD RESTART LOGIC
 function init() {
-    // --- RESTART FIX ADDED HERE ---
     if (document.getElementById('p_btn').innerText === "RESTART") {
-        location.reload();
-        return;
+        cancelAnimationFrame(req);
+        score = 0; level = 1; objs = []; frame = 0;
+        ghostCharges = 0; ghostActive = false; boosterActive = false;
+        nextGhostMilestone = 2000;
+        player.x = canvas.width/2; player.tx = canvas.width/2;
     }
     
     if(paused) { togglePause(); return; }
-    score = 0; level = 1; objs = []; active = true; paused = false;
-    ghostCharges = 0; ghostActive = false; boosterActive = false;
-    nextGhostMilestone = 2000; overlay.style.display = 'none';
+    active = true; paused = false;
+    overlay.style.display = 'none';
     document.getElementById('ghost-btn').style.display = 'none';
     document.getElementById('timer-box').style.display = 'none';
     bgm.currentTime = 0; bgm.play().catch(()=>{});
@@ -196,7 +183,7 @@ function drawPlayerShape() {
 }
 
 function update() {
-if(!active || paused) return;
+    if(!active || paused) return;
     frame++;
     player.x += (player.tx - player.x) * 0.18;
 
@@ -214,19 +201,16 @@ if(!active || paused) return;
         boosterTime--; if(boosterTime <= 0) { boosterActive = false; document.getElementById('timer-box').style.display = 'none'; }
     }
 
-    // Spawn Timing
     let rate = boosterActive ? 15 : Math.max(8, 25 - level);
     if(frame % rate === 0) {
         objs.push({t:'obs', x:Math.random()*canvas.width, y:-50, w:95+(level*4), h:20, s:(5+level*0.4)*(boosterActive?2.2:1)});
     }
     if(frame % 150 === 0) objs.push({t:'orb', x:Math.random()*canvas.width, y:-50, r:10, s:4.5, c:'#ffd700'});
-    
-    // BLUE BOOSTER - RARE SPAWN
     if(frame % 750 === 0) objs.push({t:'boost', x:Math.random()*canvas.width, y:-50, r:14, s:6, c:'#0af'});
 
     if(score > level * 1000) level++;
     draw();
-    requestAnimationFrame(update);
+    req = requestAnimationFrame(update);
 }
 
 function draw() {
@@ -239,14 +223,8 @@ function draw() {
         o.y += o.s;
         if(o.t === 'obs') {
             g.fillStyle = ghostActive ? '#333' : '#f33'; g.fillRect(o.x - o.w/2, o.y, o.w, o.h);
-            
-            // --- COLLISION / GAME OVER ---
             if(Math.abs(player.x - o.x) < o.w/2 + 10 && Math.abs(player.y - o.y) < 20 && !ghostActive) {
                 active = false; bgm.pause(); sfxCrash.play(); 
-                
-                // Show Ad on Game Over
-                showInterstitialAd();
-
                 document.getElementById('m_title').innerText = "GAME OVER";
                 document.getElementById('p_btn').innerText = "RESTART";
                 overlay.style.display='flex';
@@ -264,7 +242,7 @@ function draw() {
                     document.getElementById('timer-box').innerText = "HYPER DRIVE";
                     document.getElementById('timer-box').style.display = 'block';
                 }
-                localStorage.setItem('saved_or_bs', orbs); document.getElementById('o_val').innerText = orbs;
+                localStorage.setItem('saved_orbs', orbs); document.getElementById('o_val').innerText = orbs;
             }
         }
         if(o.y > canvas.height) { objs.splice(i, 1); score += 5; }
