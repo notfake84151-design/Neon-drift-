@@ -126,6 +126,12 @@ function setSkin(color, cost, el, type) {
 }
 
 function init() {
+    // --- RESTART FIX ADDED HERE ---
+    if (document.getElementById('p_btn').innerText === "RESTART") {
+        location.reload();
+        return;
+    }
+    
     if(paused) { togglePause(); return; }
     score = 0; level = 1; objs = []; active = true; paused = false;
     ghostCharges = 0; ghostActive = false; boosterActive = false;
@@ -258,7 +264,7 @@ function draw() {
                     document.getElementById('timer-box').innerText = "HYPER DRIVE";
                     document.getElementById('timer-box').style.display = 'block';
                 }
-                localStorage.setItem('saved_orbs', orbs); document.getElementById('o_val').innerText = orbs;
+                localStorage.setItem('saved_or_bs', orbs); document.getElementById('o_val').innerText = orbs;
             }
         }
         if(o.y > canvas.height) { objs.splice(i, 1); score += 5; }
@@ -270,3 +276,4 @@ function draw() {
 </script>
 </body>
 </html>
+
